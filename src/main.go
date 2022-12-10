@@ -1,47 +1,61 @@
 package main
 
 import (
+	"cqhttp-client/src/log"
+	msg "cqhttp-client/src/message"
 	"flag"
 	"github.com/gorilla/websocket"
-	"log"
-	msg "mirai-go/src/message"
 	"net/url"
 	"os"
 	"os/signal"
+	"time"
 )
 
 var addr = flag.String("addr", "localhost:15733", "http service address")
 
 func main() {
 	flag.Parse()
-	log.SetFlags(0)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/echo"}
-	log.Printf("connecting to %s", u.String())
+	log.Infof("connecting to %s", u.String())
 
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatal("dial:", err)
-	}
-	defer c.Close()
-
-	client := msg.NewClient(c)
-	go client.Run()
-	go client.SendGroupMessage()
-
-	for {
-		var receiveMsg *msg.ReceiveMessage
-		if err := c.ReadJSON(&receiveMsg); err != nil {
-			return
-		}
-
-		err := client.ReceiveMessage(receiveMsg)
+	var c *websocket.Conn
+	var err error
+	defer func(c *websocket.Conn) {
+		err := c.Close()
 		if err != nil {
-			return
+			log.Error("close connection failed")
+		}
+	}(c)
+	for {
+		c, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
+		if err != nil {
+			log.Info("connect failed")
+			log.Info("after 20s reconnect the server")
+			time.Sleep(20 * time.Second)
+			continue
+		}
+		log.Info("connect to cqhttp succeed")
+
+		client := msg.NewClient(c)
+		go client.Run()
+		go client.ReplyGroupMessage()
+
+		for {
+			var receiveMsg *msg.ReceiveMessage
+			if err := c.ReadJSON(&receiveMsg); err != nil {
+				log.Error(err.Error())
+				continue
+			}
+
+			err := client.ReceiveMessage(receiveMsg)
+			if err != nil {
+				log.Error(err.Error())
+				continue
+			}
 		}
 	}
-
 }

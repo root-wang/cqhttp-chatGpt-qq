@@ -5,6 +5,10 @@
 package message
 
 import (
+	"errors"
+	"fmt"
+	"log"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,6 +18,37 @@ import (
 type CQCode struct {
 	rawMessage string
 	keyValue   map[string]interface{}
+}
+
+func (c *CQCode) String() string {
+	start := "[CQ:" + c.ValueByKey("CQ").(string) + ","
+	end := "]" + c.rawMessage
+
+	var data strings.Builder
+	for key, value := range c.keyValue {
+		if key == "CQ" {
+			continue
+		}
+		rv := reflect.ValueOf(value)
+		var str string
+		switch rv.Kind() {
+		case reflect.String:
+			str = value.(string)
+		case reflect.Int64:
+			str = strconv.FormatInt(value.(int64), 10)
+		case reflect.Bool:
+			if value == true {
+				str = "true"
+			} else {
+				str = "false"
+			}
+		default:
+			log.Fatalf("error cqcode value of key: %s", key)
+		}
+		data.WriteString(key + "=" + str + ",")
+	}
+	str := strings.TrimRight(data.String(), ",")
+	return fmt.Sprintf("%s%s%s", start, str, end)
 }
 
 func (c *CQCode) ParseKey(keys ...string) {
@@ -37,8 +72,20 @@ func (c *CQCode) ValueByKey(key string) interface{} {
 	return nil
 }
 
+func (c *CQCode) SetKeyValue(keys []string, values ...interface{}) {
+	for index, key := range keys {
+		c.keyValue[key] = values[index]
+	}
+}
+
+func (c *CQCode) SetType(t string) {
+	c.SetKeyValue([]string{"CQ"}, t)
+}
+
 func (c *CQCode) IsAt() bool {
-	c.ParseKey("qq")
+	if c.ValueByKey("qq") == nil {
+		c.ParseKey("qq")
+	}
 	if c.ValueByKey("CQ") == "at" && c.ValueByKey("qq").(string) == strconv.FormatInt(QQ, 10) {
 		return true
 	}
@@ -78,11 +125,14 @@ func (m RawMessage) ToCQCode() (cqMsg *CQMessage, err error) {
 	reg := `(\[.*\])\s(.+)`
 	cqReg := regexp.MustCompile(reg)
 	matches := cqReg.FindStringSubmatch(string(m))
+	if matches == nil {
+		return nil, errors.New("未能捕获到消息")
+	}
+	cqMsg.msg = matches[2]
 	cqMsg.cqCode = &CQCode{
 		rawMessage: matches[1],
 		keyValue:   make(map[string]interface{}),
 	}
-	cqMsg.msg = matches[2]
 	// 初始化CQMsg必须指明CQ类型
 	cqMsg.cqCode.ParseKey("CQ")
 	return

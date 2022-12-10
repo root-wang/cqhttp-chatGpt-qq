@@ -5,8 +5,8 @@
 package message
 
 import (
+	"cqhttp-client/src/log"
 	"github.com/gorilla/websocket"
-	"strconv"
 )
 
 const QQ int64 = 1966962723
@@ -32,37 +32,40 @@ func NewClient(c *websocket.Conn) *Client {
 }
 
 func (c *Client) ReceiveMessage(message *ReceiveMessage) error {
-	if !message.RawMessage.IsEmpty() {
-		if message.RawMessage.IsPlainMessage() {
-			message.Message = string(message.RawMessage)
-		} else {
-			cqMsg, err := message.RawMessage.ToCQCode()
-			if err != nil {
-				return err
-			}
-			if cqMsg.CQCode().IsAt() {
-				println(cqMsg.Message())
-				message.Message = cqMsg.Message()
-			}
+	if !message.RawMessage.IsPlainMessage() {
+		cqMsg, err := message.RawMessage.ToCQCode()
+		if err != nil {
+			return err
 		}
+		if cqMsg.CQCode().IsAt() {
+			log.Infof("get quote message:%s from group:%d", cqMsg.Message(), message.GroupId)
+			message.Message = cqMsg.Message()
+			c.receiveMessageChan <- message
+		}
+
 	}
-	c.receiveMessageChan <- message
 	return nil
 }
 
-func (c *Client) SendGroupMessage() {
+func (c *Client) ReplyGroupMessage() {
 	for {
 		select {
 		case receiveMsg := <-c.receiveMessageChan:
 			msg := receiveMsg.Message
-			respMsg := "[CQ:reply,id=" + strconv.FormatInt(
-				receiveMsg.MessageId, 10,
-			) + "]" + "this is test for" + msg
+			respMsg := "this is test for " + msg
+			// 将响应消息转换为CQCode结构体 然后再变为字符串
+			cqCode := &CQCode{
+				rawMessage: respMsg,
+				keyValue:   make(map[string]interface{}),
+			}
+			cqCode.SetType("reply")
+			cqCode.SetKeyValue([]string{"id"}, receiveMsg.MessageId)
 			resp := &Response{
 				Action: "send_group_msg",
 				Params: groupResp{
-					GroupId:    receiveMsg.GroupId,
-					Message:    respMsg,
+					GroupId: receiveMsg.GroupId,
+					Message: cqCode.String(),
+					// client 自己转不需要server再转了
 					AutoEscape: false,
 				},
 			}
@@ -76,7 +79,9 @@ func (c *Client) Run() {
 		select {
 		case resp := <-c.responseChan:
 			err := c.c.WriteJSON(resp)
+			log.Infof("send message to %s", resp.Action)
 			if err != nil {
+				log.Error(err.Error())
 				return
 			}
 		}

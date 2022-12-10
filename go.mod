@@ -1,4 +1,4 @@
-module mirai-go
+module cqhttp-client
 
 go 1.19
 
