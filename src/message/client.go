@@ -6,13 +6,26 @@ package message
 
 import (
 	"cqhttp-client/src/log"
+	module "cqhttp-client/src/module"
+	"fmt"
 	"github.com/gorilla/websocket"
+	"time"
 )
 
-const QQ int64 = 1966962723
+const BotQQ int64 = 1966962723
+
+type ACTION string
+
+func (A ACTION) String() string {
+	return string(A)
+}
+
+const (
+	SendGroupMsg ACTION = "send_group_msg"
+)
 
 type Response struct {
-	Action string      `json:"action"`
+	Action ACTION      `json:"action"`
 	Params interface{} `json:"params"`
 	Echo   string      `json:"echo"`
 }
@@ -21,6 +34,7 @@ type Client struct {
 	c                  *websocket.Conn
 	receiveMessageChan chan *ReceiveMessage
 	responseChan       chan *Response
+	*module.Module
 }
 
 func NewClient(c *websocket.Conn) *Client {
@@ -28,6 +42,7 @@ func NewClient(c *websocket.Conn) *Client {
 		c:                  c,
 		receiveMessageChan: make(chan *ReceiveMessage),
 		responseChan:       make(chan *Response),
+		Module:             module.NewModule(),
 	}
 }
 
@@ -42,29 +57,33 @@ func (c *Client) ReceiveMessage(message *ReceiveMessage) error {
 			message.Message = cqMsg.Message()
 			c.receiveMessageChan <- message
 		}
-
 	}
 	return nil
 }
 
+// ReplyGroupMessage if some group member at bot reply the message
 func (c *Client) ReplyGroupMessage() {
 	for {
 		select {
 		case receiveMsg := <-c.receiveMessageChan:
 			msg := receiveMsg.Message
-			respMsg := "this is test for " + msg
+			// 使用第三方模块对消息进行处理
+			tick := time.Now()
+			respMsg := fmt.Sprintf("this is test for %s", c.Handler("gpt").HandlerMessage(msg))
+			log.Infof("处理此消息共用时 %.2f s", time.Since(tick).Seconds())
 			// 将响应消息转换为CQCode结构体 然后再变为字符串
 			cqCode := &CQCode{
 				rawMessage: respMsg,
-				keyValue:   make(map[string]interface{}),
+				keyValue:   make(map[CQKEY]string),
+				cqtype:     "",
 			}
-			cqCode.SetType("reply")
-			cqCode.SetKeyValue([]string{"id"}, receiveMsg.MessageId)
+			cqCode.SetType(REPLY)
+			cqCode.SetKeyValue([]CQKEY{ID}, receiveMsg.MessageId)
 			resp := &Response{
-				Action: "send_group_msg",
+				Action: SendGroupMsg,
 				Params: groupResp{
 					GroupId: receiveMsg.GroupId,
-					Message: cqCode.String(),
+					Message: fmt.Sprintf("%s", cqCode),
 					// client 自己转不需要server再转了
 					AutoEscape: false,
 				},

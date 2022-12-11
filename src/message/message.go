@@ -5,58 +5,73 @@
 package message
 
 import (
+	"cqhttp-client/src/utils"
 	"errors"
 	"fmt"
-	"log"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
+// CQTYPE CQCode中CQ的类型
+type CQTYPE string
+
+func (C CQTYPE) String() string {
+	return string(C)
+}
+
+const (
+	AT    CQTYPE = "at"
+	REPLY CQTYPE = "reply"
+)
+
+type CQKEY string
+
+func (C CQKEY) String() string {
+	return string(C)
+}
+
+const (
+	CQ CQKEY = "CQ"
+	QQ CQKEY = "qq"
+	ID CQKEY = "id"
+)
+
 // CQCode 包含一个CQType和一系列键值对 不能确定有哪些键值对采取懒加载
 type CQCode struct {
 	rawMessage string
-	keyValue   map[string]interface{}
+	keyValue   map[CQKEY]string
+	cqtype     CQTYPE
 }
 
 func (c *CQCode) String() string {
-	start := "[CQ:" + c.ValueByKey("CQ").(string) + ","
-	end := "]" + c.rawMessage
+	start := fmt.Sprintf("[CQ:%s,", c.cqtype)
+	end := fmt.Sprintf("]%s", c.rawMessage)
 
 	var data strings.Builder
 	for key, value := range c.keyValue {
-		if key == "CQ" {
+		if key == CQ {
 			continue
 		}
-		rv := reflect.ValueOf(value)
-		var str string
-		switch rv.Kind() {
-		case reflect.String:
-			str = value.(string)
-		case reflect.Int64:
-			str = strconv.FormatInt(value.(int64), 10)
-		case reflect.Bool:
-			if value == true {
-				str = "true"
-			} else {
-				str = "false"
-			}
-		default:
-			log.Fatalf("error cqcode value of key: %s", key)
-		}
-		data.WriteString(key + "=" + str + ",")
+		str := utils.Any2string(value)
+		data.WriteString(fmt.Sprintf("%s=%s,", key, str))
 	}
 	str := strings.TrimRight(data.String(), ",")
 	return fmt.Sprintf("%s%s%s", start, str, end)
 }
 
-func (c *CQCode) ParseKey(keys ...string) {
+func (c *CQCode) ParseKey(keys ...CQKEY) {
 	for _, key := range keys {
-		reg := key + `=(.*)[\],]{1}`
-		if key == "CQ" {
-			reg = key + `:(.*),`
+		if key == CQ {
+			typeReg := regexp.MustCompile(`\[CQ:(\w+),`)
+			matches := typeReg.FindStringSubmatch(c.rawMessage)
+			if matches != nil {
+				c.cqtype = CQTYPE(matches[1])
+			}
+			continue
 		}
+		keyStr := fmt.Sprintf("%s", key)
+		reg := keyStr + `=(.*)[\],]{1}`
 		keyReg := regexp.MustCompile(reg)
 		matches := keyReg.FindStringSubmatch(c.rawMessage)
 		if matches != nil {
@@ -65,28 +80,28 @@ func (c *CQCode) ParseKey(keys ...string) {
 	}
 }
 
-func (c *CQCode) ValueByKey(key string) interface{} {
+func (c *CQCode) ValueByKey(key CQKEY) string {
 	if value, ok := c.keyValue[key]; ok {
 		return value
 	}
-	return nil
+	return ""
 }
 
-func (c *CQCode) SetKeyValue(keys []string, values ...interface{}) {
+func (c *CQCode) SetKeyValue(keys []CQKEY, values ...interface{}) {
 	for index, key := range keys {
-		c.keyValue[key] = values[index]
+		c.keyValue[key] = utils.Any2string(values[index])
 	}
 }
 
-func (c *CQCode) SetType(t string) {
-	c.SetKeyValue([]string{"CQ"}, t)
+func (c *CQCode) SetType(t CQTYPE) {
+	c.cqtype = t
 }
 
 func (c *CQCode) IsAt() bool {
-	if c.ValueByKey("qq") == nil {
-		c.ParseKey("qq")
+	if c.ValueByKey(QQ) == "" {
+		c.ParseKey(QQ)
 	}
-	if c.ValueByKey("CQ") == "at" && c.ValueByKey("qq").(string) == strconv.FormatInt(QQ, 10) {
+	if c.cqtype == AT && c.ValueByKey(QQ) == strconv.FormatInt(BotQQ, 10) {
 		return true
 	}
 	return false
@@ -106,18 +121,26 @@ func (c *CQMessage) Message() string {
 	return c.msg
 }
 
+func (c *CQMessage) IsEmpty() bool {
+	return c.msg == "" || strings.Trim(c.msg, " ") == ""
+}
+
 // RawMessage 原始信息主要包含了CQCode
 type RawMessage string
 
+func (m RawMessage) String() string {
+	return string(m)
+}
+
 func (m RawMessage) IsPlainMessage() bool {
-	if strings.HasPrefix(string(m), "[CQ:") {
+	if strings.HasPrefix(fmt.Sprintf("%s", m), "[CQ:") {
 		return false
 	}
 	return true
 }
 
 func (m RawMessage) IsEmpty() bool {
-	return string(m) == ""
+	return m.String() == ""
 }
 
 func (m RawMessage) ToCQCode() (cqMsg *CQMessage, err error) {
@@ -128,13 +151,19 @@ func (m RawMessage) ToCQCode() (cqMsg *CQMessage, err error) {
 	if matches == nil {
 		return nil, errors.New("未能捕获到消息")
 	}
+
 	cqMsg.msg = matches[2]
+	if cqMsg.IsEmpty() {
+		return nil, errors.New("不能发生空的消息")
+	}
+
 	cqMsg.cqCode = &CQCode{
 		rawMessage: matches[1],
-		keyValue:   make(map[string]interface{}),
+		keyValue:   make(map[CQKEY]string),
 	}
+
 	// 初始化CQMsg必须指明CQ类型
-	cqMsg.cqCode.ParseKey("CQ")
+	cqMsg.cqCode.ParseKey(CQ)
 	return
 }
 
