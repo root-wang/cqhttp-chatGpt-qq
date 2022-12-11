@@ -5,19 +5,17 @@
 package gpt
 
 import (
+	cst "cqhttp-client/src/constant"
 	"cqhttp-client/src/log"
 	"cqhttp-client/src/module/gpt/expirymap"
 	"cqhttp-client/src/module/gpt/sse"
+	"cqhttp-client/src/utils"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 
 	"time"
 )
-
-const KeyAccessToken = "accessToken"
-const UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
 
 type ChatGPT struct {
 	SessionToken   string
@@ -61,33 +59,23 @@ func NewGpt(token string) *ChatGPT {
 	}
 }
 
-func (c *ChatGPT) IsAuthenticated() bool {
-	_, err := c.refreshAccessToken()
-	return err == nil
-}
-
-func (c *ChatGPT) EnsureAuth() error {
-	_, err := c.refreshAccessToken()
-	return err
-}
-
 func (c *ChatGPT) SendMessage(message string, conversationId string, messageId string) (chan ChatResponse, error) {
 	r := make(chan ChatResponse)
 	accessToken, err := c.refreshAccessToken()
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Couldn't get access token: %v", err))
+		return nil, fmt.Errorf("couldn't get access token: %v", err)
 	}
 
-	client := sse.Init("https://chat.openai.com/backend-api/conversation")
+	client := sse.Init(cst.InitURL)
 
 	client.Headers = map[string]string{
-		"User-Agent":    UserAgent,
+		"User-Agent":    cst.UserAgent,
 		"Authorization": fmt.Sprintf("Bearer %s", accessToken),
 	}
 
 	err = client.Connect(message, conversationId, messageId)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Couldn't connect to ChatGPT: %v", err))
+		return nil, fmt.Errorf("Couldn't connect to ChatGPT: %v", err)
 	}
 
 	go func() {
@@ -103,7 +91,7 @@ func (c *ChatGPT) SendMessage(message string, conversationId string, messageId s
 				var res MessageResponse
 				err := json.Unmarshal([]byte(chunk), &res)
 				if err != nil {
-					log.Infof("Couldn't unmarshal message response: %v", err)
+					log.Errorf("Couldn't unmarshal message response from gpt: %v", err)
 					continue
 				}
 
@@ -122,58 +110,59 @@ func (c *ChatGPT) SendMessage(message string, conversationId string, messageId s
 }
 
 func (c *ChatGPT) refreshAccessToken() (string, error) {
-	cachedAccessToken, ok := c.AccessTokenMap.Get(KeyAccessToken)
+	cachedAccessToken, ok := c.AccessTokenMap.Get(cst.KeyAccessToken)
 	if ok {
 		return cachedAccessToken, nil
 	}
 
 	req, err := http.NewRequest("GET", "https://chat.openai.com/api/auth/session", nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %v", err)
+		return "", log.ErrorInsidef("failed to create request to gpt: %v", err)
 	}
 
-	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("User-Agent", cst.UserAgent)
 	req.Header.Set("Cookie", fmt.Sprintf("__Secure-next-auth.session-token=%s", c.SessionToken))
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to perform request: %v", err)
+		return "", log.ErrorInsidef("failed to perform request to gpt: %v", err)
 	}
 	defer res.Body.Close()
 
 	var result SessionResult
 	err = json.NewDecoder(res.Body).Decode(&result)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode response: %v", err)
+		return "", log.ErrorInsidef("failed to decode response: %v", err)
 	}
 
 	accessToken := result.AccessToken
 	if accessToken == "" {
-		return "", errors.New("unauthorized")
+		return "", log.ErrorInside("unauthorized")
 	}
 
 	if result.Error != "" {
-		if result.Error == "RefreshAccessTokenError" {
-			return "", errors.New("Session token has expired")
+		if utils.StringEqual(result.Error, cst.RefreshAccessTokenError) {
+			return "", log.ErrorInside("session token has expired")
 		}
 
-		return "", errors.New(result.Error)
+		return "", log.ErrorInside(result.Error)
 	}
 
 	expiryTime, err := time.Parse(time.RFC3339, result.Expires)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse expiry time: %v", err)
+		return "", log.ErrorInsidef("failed to parse expiry time: %v", err)
 	}
-	c.AccessTokenMap.Set(KeyAccessToken, accessToken, expiryTime.Sub(time.Now()))
+	c.AccessTokenMap.Set(cst.KeyAccessToken, accessToken, expiryTime.Sub(time.Now()))
 
 	return accessToken, nil
 }
 
-func (c *ChatGPT) HandlerMessage(s string) string {
+func (c *ChatGPT) HandlerMessage(s string) (string, error) {
 	feed, err := c.SendMessage(s, "", "")
 	if err != nil {
 		log.Error(err.Error())
 	}
+
 	var msg string
 pollResponse:
 	for {
@@ -185,5 +174,5 @@ pollResponse:
 			msg = response.Message
 		}
 	}
-	return msg
+	return msg, nil
 }

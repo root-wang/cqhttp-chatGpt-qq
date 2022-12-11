@@ -5,8 +5,8 @@
 package message
 
 import (
+	"cqhttp-client/src/log"
 	"cqhttp-client/src/utils"
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -88,6 +88,15 @@ func (c *CQCode) ValueByKey(key CQKEY) string {
 }
 
 func (c *CQCode) SetKeyValue(keys []CQKEY, values ...interface{}) {
+	if len(keys) != len(values) {
+		panic(fmt.Sprintf("must set the same numbers of key and value "))
+	}
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Errorf("set cqcode failed: %v", err)
+		}
+	}()
 	for index, key := range keys {
 		c.keyValue[key] = utils.Any2string(values[index])
 	}
@@ -133,14 +142,14 @@ func (m RawMessage) String() string {
 }
 
 func (m RawMessage) IsPlainMessage() bool {
-	if strings.HasPrefix(fmt.Sprintf("%s", m), "[CQ:") {
+	if strings.HasPrefix(fmt.Sprintf("%s", m), "[CQ:at") {
 		return false
 	}
 	return true
 }
 
 func (m RawMessage) IsEmpty() bool {
-	return m.String() == ""
+	return utils.StringEqual("", m)
 }
 
 func (m RawMessage) ToCQCode() (cqMsg *CQMessage, err error) {
@@ -149,12 +158,12 @@ func (m RawMessage) ToCQCode() (cqMsg *CQMessage, err error) {
 	cqReg := regexp.MustCompile(reg)
 	matches := cqReg.FindStringSubmatch(string(m))
 	if matches == nil {
-		return nil, errors.New("未能捕获到消息")
+		return nil, log.ErrorInside("未能捕获到消息")
 	}
 
 	cqMsg.msg = matches[2]
 	if cqMsg.IsEmpty() {
-		return nil, errors.New("不能发生空的消息")
+		return nil, log.ErrorInside("不能发生空的消息")
 	}
 
 	cqMsg.cqCode = &CQCode{

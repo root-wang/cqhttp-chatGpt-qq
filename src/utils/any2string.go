@@ -5,7 +5,7 @@
 package utils
 
 import (
-	"log"
+	"fmt"
 	"reflect"
 	"strconv"
 )
@@ -24,7 +24,8 @@ func Any2string(v interface{}) (str string) {
 			str = "false"
 		}
 	default:
-		log.Fatalf("value: %v 2 string failed", v)
+		panic(fmt.Sprintf("invalid type: %s 2 string failed", rv.Kind().String()))
+		return
 	}
 	return
 }

@@ -15,11 +15,10 @@ import (
 var addr = flag.String("addr", "localhost:15733", "http service address")
 
 func main() {
-	flag.Parse()
 
+	flag.Parse()
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
-
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/echo"}
 	log.Infof("connecting to %s", u.String())
 
@@ -28,17 +27,19 @@ func main() {
 	defer func(c *websocket.Conn) {
 		err := c.Close()
 		if err != nil {
-			log.Error("close connection failed")
+			panic("close connection failed")
 		}
 	}(c)
+
 	for {
 		c, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 		if err != nil {
-			log.Info("connect failed")
+			log.Errorf("connect failed :%v", err)
 			log.Info("after 20s reconnect the server")
 			time.Sleep(20 * time.Second)
 			continue
 		}
+
 		log.Info("connect to cqhttp succeed")
 
 		token := ""
@@ -48,18 +49,20 @@ func main() {
 		go client.Run()
 		go client.ReplyGroupMessage()
 
+	receiveLoop:
 		for {
 			var receiveMsg *msg.ReceiveMessage
 			if err := c.ReadJSON(&receiveMsg); err != nil {
-				log.Error(err.Error())
-				continue
+				log.Errorf("read receive message 2 JSON failed: %v", err)
+				break receiveLoop
 			}
 
-			err := client.ReceiveMessage(receiveMsg)
-			if err != nil {
-				log.Error(err.Error())
-				continue
-			}
+			go func(receiveMsg *msg.ReceiveMessage) {
+				err := client.ReceiveMessage(receiveMsg)
+				if err != nil {
+					log.Errorf("handle receive message failed: %v", err)
+				}
+			}(receiveMsg)
 		}
 	}
 }

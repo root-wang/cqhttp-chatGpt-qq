@@ -1,10 +1,9 @@
 package sse
 
 import (
+	"cqhttp-client/src/log"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -28,7 +27,7 @@ func Init(url string) Client {
 func (c *Client) Connect(message string, conversationId string, parentMessageId string) error {
 	messages, err := json.Marshal([]string{message})
 	if err != nil {
-		return errors.New(fmt.Sprintf("failed to encode message: %v", err))
+		return log.ErrorInsidef("failed to encode message: %v", err)
 	}
 
 	if parentMessageId == "" {
@@ -61,7 +60,7 @@ func (c *Client) Connect(message string, conversationId string, parentMessageId 
 
 	req, err := http.NewRequest("POST", c.URL, strings.NewReader(body))
 	if err != nil {
-		return errors.New(fmt.Sprintf("failed to create request: %v", err))
+		return log.ErrorInsidef("failed to create request: %v", err)
 	}
 
 	for key, value := range c.Headers {
@@ -73,11 +72,11 @@ func (c *Client) Connect(message string, conversationId string, parentMessageId 
 	h := &http.Client{}
 	resp, err := h.Do(req)
 	if err != nil {
-		return errors.New(fmt.Sprintf("failed to connect to SSE: %v", err))
+		return log.ErrorInsidef("failed to connect to SSE: %v", err)
 	}
 
 	if resp.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("failed to connect to SSE: %v", resp.Status))
+		return log.ErrorInsidef("failed to connect to SSE: %v", resp.Status)
 	}
 
 	decoder := eventsource.NewDecoder(resp.Body)
@@ -89,7 +88,7 @@ func (c *Client) Connect(message string, conversationId string, parentMessageId 
 		for {
 			event, err := decoder.Decode()
 			if err != nil {
-				log.Println(errors.New(fmt.Sprintf("failed to decode event: %v", err)))
+				log.Errorf("failed to decode event: %v", err)
 				break
 			}
 			if event.Data() == "[DONE]" || event.Data() == "" {

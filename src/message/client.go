@@ -50,7 +50,7 @@ func (c *Client) ReceiveMessage(message *ReceiveMessage) error {
 	if !message.RawMessage.IsPlainMessage() {
 		cqMsg, err := message.RawMessage.ToCQCode()
 		if err != nil {
-			return err
+			return log.ErrorInsidef("transform raw message 2 cqcode failed: %v", err)
 		}
 		if cqMsg.CQCode().IsAt() {
 			log.Infof("get quote message:%s from group:%d", cqMsg.Message(), message.GroupId)
@@ -66,31 +66,48 @@ func (c *Client) ReplyGroupMessage() {
 	for {
 		select {
 		case receiveMsg := <-c.receiveMessageChan:
-			msg := receiveMsg.Message
-			// 使用第三方模块对消息进行处理
-			tick := time.Now()
-			respMsg := fmt.Sprintf("this is test for %s", c.Handler("gpt").HandlerMessage(msg))
-			log.Infof("处理此消息共用时 %.2f s", time.Since(tick).Seconds())
-			// 将响应消息转换为CQCode结构体 然后再变为字符串
-			cqCode := &CQCode{
-				rawMessage: respMsg,
-				keyValue:   make(map[CQKEY]string),
-				cqtype:     "",
-			}
-			cqCode.SetType(REPLY)
-			cqCode.SetKeyValue([]CQKEY{ID}, receiveMsg.MessageId)
-			resp := &Response{
-				Action: SendGroupMsg,
-				Params: groupResp{
-					GroupId: receiveMsg.GroupId,
-					Message: fmt.Sprintf("%s", cqCode),
-					// client 自己转不需要server再转了
-					AutoEscape: false,
-				},
-			}
-			c.responseChan <- resp
+			go func(receiveMsg *ReceiveMessage) {
+				msg := receiveMsg.Message
+				// 使用第三方模块对消息进行处理
+				tick := time.Now()
+				// handleMsg := testGoroutine(msg)
+				handleMsg, err := c.Handler("gpt").HandlerMessage(msg)
+				if err != nil {
+					log.Errorf("reply group message failed: %v", err)
+				}
+				respMsg := fmt.Sprintf(
+					"%s\n\nfrom OPENAI \n\n处理此消息共用时 %.2f s", handleMsg,
+					time.Since(tick).Seconds(),
+				)
+				log.Infof("处理此消息共用时 %.2f s", time.Since(tick).Seconds())
+				// 将响应消息转换为CQCode结构体 然后再变为字符串
+				cqCode := &CQCode{
+					rawMessage: respMsg,
+					keyValue:   make(map[CQKEY]string),
+					cqtype:     "",
+				}
+				cqCode.SetType(REPLY)
+				cqCode.SetKeyValue([]CQKEY{ID}, receiveMsg.MessageId)
+
+				resp := &Response{
+					Action: SendGroupMsg,
+					Params: groupResp{
+						GroupId: receiveMsg.GroupId,
+						Message: fmt.Sprintf("%s", cqCode),
+						// client 自己转不需要server再转了
+						AutoEscape: false,
+					},
+				}
+				c.responseChan <- resp
+			}(receiveMsg)
 		}
 	}
+}
+
+func testGoroutine(msg string) (handleMsg string) {
+	handleMsg = "test" + msg
+	time.Sleep(time.Duration(len(msg)) * time.Second)
+	return
 }
 
 func (c *Client) Run() {
@@ -100,7 +117,7 @@ func (c *Client) Run() {
 			err := c.c.WriteJSON(resp)
 			log.Infof("send message to %s", resp.Action)
 			if err != nil {
-				log.Error(err.Error())
+				log.Errorf("write response message 2 JSON failed: %v", err)
 				return
 			}
 		}
