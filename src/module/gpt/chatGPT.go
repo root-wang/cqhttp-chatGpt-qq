@@ -156,23 +156,3 @@ func (c *ChatGPT) refreshAccessToken() (string, error) {
 
 	return accessToken, nil
 }
-
-func (c *ChatGPT) HandlerMessage(s string) (string, error) {
-	feed, err := c.SendMessage(s, "", "")
-	if err != nil {
-		log.Error(err.Error())
-	}
-
-	var msg string
-pollResponse:
-	for {
-		select {
-		case response, ok := <-feed:
-			if !ok {
-				break pollResponse
-			}
-			msg = response.Message
-		}
-	}
-	return msg, nil
-}
