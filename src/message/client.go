@@ -68,25 +68,28 @@ func (c *Client) ReplyGroupMessage() {
 		case receiveMsg := <-c.receiveMessageChan:
 			go func(receiveMsg *ReceiveMessage) {
 				msg := receiveMsg.Message
+				var handleMsg string
+				var err error
 				// 使用第三方模块对消息进行处理
 				tick := time.Now()
-				// handleMsg := testGoroutine(msg)
-				handleMsg, err := c.Handler("gpt").HandlerMessage(msg)
+				prompt, ok := IsRequireImage(msg)
+				if ok {
+					// use p&: prefix
+					handleMsg, err = c.Handler("gptImage").HandlerMessage(prompt)
+				} else {
+					handleMsg, err = c.Handler("gptText").HandlerMessage(prompt)
+				}
 				if err != nil {
 					log.Errorf("reply group message failed: %v", err)
 				}
-				respMsg := fmt.Sprintf(
-					"%s\n\nfrom OPENAI \n\n处理此消息共用时 %.2f s", handleMsg,
-					time.Since(tick).Seconds(),
-				)
+				// respMsg := fmt.Sprintf(
+				// 	"%s\n\nfrom OPENAI处理此消息共用时 %.2f s", handleMsg,
+				// 	time.Since(tick).Seconds(),
+				// )
+				respMsg := fmt.Sprintf("%s\n\nfrom OPENAI", handleMsg)
 				log.Infof("处理此消息共用时 %.2f s", time.Since(tick).Seconds())
 				// 将响应消息转换为CQCode结构体 然后再变为字符串
-				cqCode := &CQCode{
-					rawMessage: respMsg,
-					keyValue:   make(map[CQKEY]string),
-					cqtype:     "",
-				}
-				cqCode.SetType(REPLY)
+				cqCode := NewCQCode(respMsg, REPLY)
 				cqCode.SetKeyValue([]CQKEY{ID}, receiveMsg.MessageId)
 
 				resp := &Response{

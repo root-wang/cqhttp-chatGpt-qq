@@ -5,7 +5,7 @@
 package API
 
 type (
-	Request struct {
+	TextReq struct {
 		// need to get model list
 		Model string `json:"model"`
 		// send msg
@@ -26,7 +26,7 @@ type (
 		Stop string `json:"stop"`
 	}
 
-	Response struct {
+	TextResp struct {
 		Id      string    `json:"id"`
 		Object  string    `json:"object"`
 		Created int64     `json:"created"`
@@ -61,13 +61,13 @@ const (
 )
 
 const (
-	MaxTokens   = 200
-	Temperature = 1
-	TopP        = 0
-	N           = 1
-	Stream      = false
-	Logprobs    = 0
-	Stop        = ""
+	TextMaxTokens   = 200
+	TextTemperature = 1
+	TextTopP        = 0
+	TextN           = 1
+	TextStream      = false
+	TextLogprobs    = 0
+	TextStop        = ""
 )
 
 const (

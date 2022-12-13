@@ -23,6 +23,7 @@ func (C CQTYPE) String() string {
 const (
 	AT    CQTYPE = "at"
 	REPLY CQTYPE = "reply"
+	IMAGE CQTYPE = "image"
 )
 
 type CQKEY string
@@ -33,8 +34,11 @@ func (C CQKEY) String() string {
 
 const (
 	CQ CQKEY = "CQ"
+	// QQ reply
 	QQ CQKEY = "qq"
 	ID CQKEY = "id"
+	// FILE image
+	FILE CQKEY = "file"
 )
 
 // CQCode 包含一个CQType和一系列键值对 不能确定有哪些键值对采取懒加载
@@ -42,6 +46,14 @@ type CQCode struct {
 	rawMessage string
 	keyValue   map[CQKEY]string
 	cqtype     CQTYPE
+}
+
+func NewCQCode(rawMessage string, cqtype CQTYPE) *CQCode {
+	return &CQCode{
+		rawMessage: rawMessage,
+		keyValue:   make(map[CQKEY]string),
+		cqtype:     cqtype,
+	}
 }
 
 func (c *CQCode) String() string {
@@ -203,4 +215,17 @@ type ReceiveMessage struct {
 	RawMessage  RawMessage `json:"raw_message"`
 	Message     string     `json:"message"`
 	Sender      Sender     `json:"sender"`
+}
+
+func IsRequireImage(msg string) (prompt string, ok bool) {
+	prompt = msg
+	ok = false
+	// p&amp;
+	imageReg := regexp.MustCompile(`p&amp;:(.+)`)
+	matches := imageReg.FindStringSubmatch(msg)
+	if matches != nil {
+		prompt = matches[1]
+		ok = true
+	}
+	return
 }

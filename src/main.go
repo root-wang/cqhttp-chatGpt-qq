@@ -47,7 +47,8 @@ func main() {
 		client := msg.NewClient(c)
 		// client.AddModule("gpt", gpt.NewGpt(token))
 		api := API.InitApi()
-		client.AddModule("gpt", api.APIByName(API.TextCompletion))
+		client.AddModule("gptText", api.APIByName(API.TextCompletion))
+		client.AddModule("gptImage", api.APIByName(API.ImageGeneration))
 		go client.Run()
 		go client.ReplyGroupMessage()
 
