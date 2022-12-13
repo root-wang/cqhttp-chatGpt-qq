@@ -1,3 +1,4 @@
 *.xml
 .idea
 gpt.json
+*.log

@@ -5,15 +5,21 @@
 package log
 
 import (
+	"cqhttp-client/src/log/file"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"runtime"
 )
 
 var (
-	errorLog = log.New(os.Stdout, "\033[31m[error]\033[0m ", log.LstdFlags|log.Lshortfile)
-	infoLog  = log.New(os.Stdout, "\033[34m[info ]\033[0m ", log.LstdFlags|log.Lshortfile)
+	errorLog = log.New(
+		io.MultiWriter(os.Stdout, file.InitLogFile()), "\033[31m[error]\033[0m ", log.LstdFlags|log.Lshortfile,
+	)
+	infoLog = log.New(
+		io.MultiWriter(os.Stdout, file.InitLogFile()), "\033[34m[info ]\033[0m ", log.LstdFlags|log.Lshortfile,
+	)
 )
 
 var (
@@ -24,33 +30,33 @@ var (
 )
 
 func ErrorInside(e string) error {
-	_, file, line, ok := runtime.Caller(1)
+	_, f, line, ok := runtime.Caller(1)
 	if ok {
-		short := file
-		for i := len(file) - 1; i > 0; i-- {
-			if file[i] == '/' {
-				short = file[i+1:]
+		short := f
+		for i := len(f) - 1; i > 0; i-- {
+			if f[i] == '/' {
+				short = f[i+1:]
 				break
 			}
 		}
-		file = short
+		f = short
 	}
-	return fmt.Errorf("%s:%d: %s", file, line, e)
+	return fmt.Errorf("%s:%d: %s", f, line, e)
 }
 
 func ErrorInsidef(format string, v ...any) error {
-	_, file, line, ok := runtime.Caller(1)
+	_, f, line, ok := runtime.Caller(1)
 	if ok {
-		short := file
-		for i := len(file) - 1; i > 0; i-- {
-			if file[i] == '/' {
-				short = file[i+1:]
+		short := f
+		for i := len(f) - 1; i > 0; i-- {
+			if f[i] == '/' {
+				short = f[i+1:]
 				break
 			}
 		}
-		file = short
+		f = short
 	}
-	prefix := []any{file, line}
+	prefix := []any{f, line}
 	prefix = append(prefix, v...)
 	return fmt.Errorf("%s:%d: "+format, prefix...)
 }
