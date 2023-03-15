@@ -79,4 +79,6 @@ const (
 	Babbage = "text-babbage-001"
 	// Ada Good at: Parsing text, simple classification, address correction, keywords
 	Ada = "text-ada-001"
+	// 
+	GPT_3_5 = "gpt-3.5-turbo"
 )

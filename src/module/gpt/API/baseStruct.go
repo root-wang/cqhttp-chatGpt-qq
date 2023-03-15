@@ -65,7 +65,7 @@ func (A *API) MakeBody(api SaasName, msg string) interface{} {
 	switch api {
 	case TextCompletion:
 		return &TextReq{
-			Model:       Curie,
+			Model:       GPT_3_5,
 			Prompt:      msg,
 			MaxTokens:   TextMaxTokens,
 			Temperature: TextTemperature,
