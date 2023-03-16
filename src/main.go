@@ -1,7 +1,10 @@
 package main
 
 import (
+	client2 "cqhttp-client/src/client"
+	"cqhttp-client/src/constant"
 	"cqhttp-client/src/log"
+	"cqhttp-client/src/log/file"
 	msg "cqhttp-client/src/message"
 	"cqhttp-client/src/module/gpt/API"
 	"flag"
@@ -44,11 +47,12 @@ func main() {
 
 		// token := ""
 
-		client := msg.NewClient(c)
+		client := client2.NewClient(c)
 		// client.AddModule("gpt", gpt.NewGpt(token))
 		api := API.InitApi()
-		client.AddModule("gptText", api.APIByName(API.TextCompletion))
-		client.AddModule("gptImage", api.APIByName(API.ImageGeneration))
+		client.AddModule(constant.GPTTEXT, api.APIByName(API.TextCompletion))
+		client.AddModule(constant.GPTIMAGE, api.APIByName(API.ImageGeneration))
+		client.AddModule(constant.GPTCHAT, api.APIByName(API.ChatCompletion))
 		go client.Run()
 		go client.ReplyGroupMessage()
 
@@ -68,4 +72,8 @@ func main() {
 			}(receiveMsg)
 		}
 	}
+}
+
+func init() {
+	println(file.Prefix)
 }

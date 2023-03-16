@@ -5,6 +5,7 @@
 package message
 
 import (
+	"cqhttp-client/src/constant"
 	"cqhttp-client/src/log"
 	"cqhttp-client/src/utils"
 	"fmt"
@@ -122,7 +123,7 @@ func (c *CQCode) IsAt() bool {
 	if c.ValueByKey(QQ) == "" {
 		c.ParseKey(QQ)
 	}
-	if c.cqtype == AT && c.ValueByKey(QQ) == strconv.FormatInt(BotQQ, 10) {
+	if c.cqtype == AT && c.ValueByKey(QQ) == strconv.FormatInt(constant.BotQQ, 10) {
 		return true
 	}
 	return false
@@ -217,15 +218,26 @@ type ReceiveMessage struct {
 	Sender      Sender     `json:"sender"`
 }
 
-func IsRequireImage(msg string) (prompt string, ok bool) {
-	prompt = msg
-	ok = false
-	// p&amp;
+func CheckModuleType(receiveMsg string) (module string, prompt string) {
+	module = constant.GPTTEXT
+	prompt = receiveMsg
+	// use p&: prefix
 	imageReg := regexp.MustCompile(`p&amp;:(.+)`)
-	matches := imageReg.FindStringSubmatch(msg)
+	matches := imageReg.FindStringSubmatch(prompt)
 	if matches != nil {
 		prompt = matches[1]
-		ok = true
+		module = constant.GPTIMAGE
+		return
 	}
+
+	// use c& prefix
+	chatReg := regexp.MustCompile(`c&amp;(.+)`)
+	matches = chatReg.FindStringSubmatch(prompt)
+	if matches != nil {
+		prompt = matches[1]
+		module = constant.GPTCHAT
+		return
+	}
+
 	return
 }

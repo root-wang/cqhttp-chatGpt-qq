@@ -42,7 +42,7 @@ func InitApi() *API {
 	a := &API{
 		apis:   make(map[SaasName]Parser),
 		urls:   make(map[SaasName]string),
-		ApiKey: "",
+		ApiKey: "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",
 	}
 	a.apis[TextCompletion] = &TextApi{
 		a,
@@ -54,6 +54,10 @@ func InitApi() *API {
 	}
 	a.urls[ImageGeneration] = ImageBaseURL
 
+	a.apis[ChatCompletion] = &ChatApi{
+		a,
+	}
+	a.urls[ChatCompletion] = ChatBseURL
 	return a
 }
 
@@ -61,21 +65,32 @@ func (A *API) APIByName(n SaasName) module.Moduler {
 	return A.apis[n]
 }
 
-func (A *API) MakeBody(api SaasName, msg string) interface{} {
+func (A *API) MakeBody(api SaasName, msg interface{}) interface{} {
 	switch api {
 	case TextCompletion:
 		return &TextReq{
 			Model:       Davinci,
-			Prompt:      msg,
+			Prompt:      msg.(string),
 			MaxTokens:   TextMaxTokens,
 			Temperature: TextTemperature,
 			N:           TextN,
 		}
 	case ImageGeneration:
 		return &ImageReq{
-			Prompt: msg,
+			Prompt: msg.(string),
 			N:      ImageN,
 			Size:   ImageSize,
+		}
+	case ChatCompletion:
+		return &ChatReq{
+			Model:            Gpt35Turbo,
+			Messages:         msg.([]*ChatMessage),
+			Temperature:      ChatTemperature,
+			TopP:             ChatTopP,
+			N:                ChatN,
+			MaxTokens:        ChatMaxTokens,
+			PresencePenalty:  ChatPresencePenalty,
+			FrequencyPenalty: ChatFrequencyPenalty,
 		}
 	default:
 		panic("can't make a api req body")
@@ -88,6 +103,8 @@ func (A *API) MakeResp(api SaasName) interface{} {
 		return &TextResp{}
 	case ImageGeneration:
 		return &ImageResp{}
+	case ChatCompletion:
+		return &ChatResp{}
 	default:
 		panic("can't make a api resp")
 	}
@@ -101,7 +118,7 @@ func (A *API) ParseMessage(api SaasName, resp interface{}) (string, error) {
 	return parse, nil
 }
 
-func (A *API) HandlerMessage(s string, api SaasName) (string, error) {
+func (A *API) HandlerMessage(s interface{}, api SaasName) (string, error) {
 	body, _ := json.Marshal(A.MakeBody(api, s))
 	req, err := http.NewRequest("POST", A.urls[api], strings.NewReader(string(body)))
 	if err != nil {
@@ -135,11 +152,11 @@ type TextApi struct {
 func (t TextApi) Parse(resp interface{}) (string, error) {
 	response := resp.(*TextResp)
 	return fmt.Sprintf(
-		"%s\n\n本次共消费%f美元", response.Choices[0].Text, float32(response.Usage.TotalTokens)*0.002/1000,
+		"%s\n", response.Choices[0].Text,
 	), nil
 }
 
-func (t TextApi) HandlerMessage(s string) (string, error) {
+func (t TextApi) HandlerMessage(s interface{}) (string, error) {
 	handlerMessage, err := t.API.HandlerMessage(s, TextCompletion)
 	if err != nil {
 		return "", err
@@ -151,7 +168,7 @@ type ImageApi struct {
 	*API
 }
 
-func (i ImageApi) HandlerMessage(s string) (string, error) {
+func (i ImageApi) HandlerMessage(s interface{}) (string, error) {
 	handlerMessage, err := i.API.HandlerMessage(s, ImageGeneration)
 	if err != nil {
 		return "", err
@@ -166,5 +183,24 @@ func (i ImageApi) Parse(resp interface{}) (string, error) {
 	cqCode := message.NewCQCode("", message.IMAGE)
 	cqCode.SetKeyValue([]message.CQKEY{message.FILE}, url)
 
-	return fmt.Sprintf("%s\n\n本次共消费0.016美元", cqCode), nil
+	return fmt.Sprintf("%s\n", cqCode), nil
+}
+
+type ChatApi struct {
+	*API
+}
+
+func (c ChatApi) HandlerMessage(s interface{}) (string, error) {
+	handlerMessage, err := c.API.HandlerMessage(s, ChatCompletion)
+	if err != nil {
+		return "", err
+	}
+	return handlerMessage, nil
+}
+
+func (c ChatApi) Parse(resp interface{}) (string, error) {
+	response := resp.(*ChatResp)
+	return fmt.Sprintf(
+		"%s", response.Choices[0].Message.Content,
+	), nil
 }

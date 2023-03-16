@@ -27,15 +27,15 @@ type (
 	}
 
 	TextResp struct {
-		Id      string    `json:"id"`
-		Object  string    `json:"object"`
-		Created int64     `json:"created"`
-		Model   string    `json:"model"`
-		Choices []choices `json:"choices"`
-		Usage   usage     `json:"usage"`
+		Id      string        `json:"id"`
+		Object  string        `json:"object"`
+		Created int64         `json:"created"`
+		Model   string        `json:"model"`
+		Choices []textChoices `json:"choices"`
+		Usage   usage         `json:"usage"`
 	}
 
-	choices struct {
+	textChoices struct {
 		Text         string   `json:"text"`
 		Index        int      `json:"index"`
 		Logprobs     logprobs `json:"logprobs"`
@@ -70,6 +70,7 @@ const (
 	TextStop        = ""
 )
 
+// Model
 const (
 	// Davinci Good at: Complex intent, cause and effect, summarization for audience
 	Davinci = "text-davinci-003"
@@ -79,6 +80,4 @@ const (
 	Babbage = "text-babbage-001"
 	// Ada Good at: Parsing text, simple classification, address correction, keywords
 	Ada = "text-ada-001"
-	// 
-	GPT_3_5 = "gpt-3.5-turbo"
 )

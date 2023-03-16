@@ -5,7 +5,7 @@
 package module
 
 type Moduler interface {
-	HandlerMessage(string) (string, error)
+	HandlerMessage(interface{}) (string, error)
 }
 
 // Module 响应信息的模块
