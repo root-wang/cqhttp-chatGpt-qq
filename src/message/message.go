@@ -1,8 +1,8 @@
-// Package message
+// Package msg
 // @Description
 // @Author root_wang
 // @Date 2022/12/10 17:58
-package message
+package msg
 
 import (
 	"cqhttp-client/src/constant"
@@ -123,7 +123,7 @@ func (c *CQCode) IsAt() bool {
 	if c.ValueByKey(QQ) == "" {
 		c.ParseKey(QQ)
 	}
-	if c.cqtype == AT && c.ValueByKey(QQ) == strconv.FormatInt(constant.BotQQ, 10) {
+	if c.cqtype == AT && c.ValueByKey(QQ) == strconv.FormatInt(cst.BotQQ, 10) {
 		return true
 	}
 	return false
@@ -216,28 +216,4 @@ type ReceiveMessage struct {
 	RawMessage  RawMessage `json:"raw_message"`
 	Message     string     `json:"message"`
 	Sender      Sender     `json:"sender"`
-}
-
-func CheckModuleType(receiveMsg string) (module string, prompt string) {
-	module = constant.GPTTEXT
-	prompt = receiveMsg
-	// use p&: prefix
-	imageReg := regexp.MustCompile(`p&amp;:(.+)`)
-	matches := imageReg.FindStringSubmatch(prompt)
-	if matches != nil {
-		prompt = matches[1]
-		module = constant.GPTIMAGE
-		return
-	}
-
-	// use c& prefix
-	chatReg := regexp.MustCompile(`c&amp;(.+)`)
-	matches = chatReg.FindStringSubmatch(prompt)
-	if matches != nil {
-		prompt = matches[1]
-		module = constant.GPTCHAT
-		return
-	}
-
-	return
 }

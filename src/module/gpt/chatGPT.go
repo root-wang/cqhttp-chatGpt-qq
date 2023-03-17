@@ -5,7 +5,7 @@
 package gpt
 
 import (
-	cst "cqhttp-client/src/constant"
+	"cqhttp-client/src/constant"
 	"cqhttp-client/src/log"
 	"cqhttp-client/src/module/gpt/expirymap"
 	"cqhttp-client/src/module/gpt/sse"

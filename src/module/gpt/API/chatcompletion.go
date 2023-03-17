@@ -8,8 +8,8 @@ import "cqhttp-client/src/constant"
 
 type (
 	ChatMessage struct {
-		Role    constant.Role `json:"role"`
-		Content string        `json:"content"`
+		Role    cst.Role `json:"role"`
+		Content string   `json:"content"`
 	}
 
 	ChatReq struct {
@@ -43,7 +43,7 @@ type (
 	}
 )
 
-func NewChatMessage(msg string, role constant.Role) *ChatMessage {
+func NewChatMessage(msg string, role cst.Role) *ChatMessage {
 	return &ChatMessage{
 		Role:    role,
 		Content: msg,

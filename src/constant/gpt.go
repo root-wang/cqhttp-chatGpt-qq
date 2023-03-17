@@ -1,8 +1,8 @@
-// Package constant
+// Package cst
 // @Description
 // @Author root_wang
 // @Date 2022/12/11 20:46
-package constant
+package cst
 
 type GPTError string
 

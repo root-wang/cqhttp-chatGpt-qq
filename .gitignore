@@ -1,4 +1,4 @@
 *.xml
 .idea
-gpt.json
+src/config/config.yaml
 *.log
