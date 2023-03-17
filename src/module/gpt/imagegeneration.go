@@ -1,8 +1,8 @@
-// Package API
+// Package gpt
 // @Description
 // @Author root_wang
 // @Date 2022/12/13 9:30
-package API
+package gpt
 
 type (
 	ImageReq struct {

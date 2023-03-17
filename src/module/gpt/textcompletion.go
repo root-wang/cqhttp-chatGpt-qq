@@ -1,8 +1,8 @@
-// Package API
+// Package gpt
 // @Description  use for chatting same as GptChat
 // @Author root_wang
 // @Date 2022/12/12 21:00
-package API
+package gpt
 
 type (
 	TextReq struct {

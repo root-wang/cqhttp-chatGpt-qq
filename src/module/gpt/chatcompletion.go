@@ -1,8 +1,8 @@
-// Package API
+// Package gpt
 // @Description
 // @Author root_wang
 // @Date 2023/3/15 15:03
-package API
+package gpt
 
 import "cqhttp-client/src/constant"
 

@@ -7,7 +7,7 @@ import (
 	"cqhttp-client/src/log"
 	"cqhttp-client/src/log/file"
 	"cqhttp-client/src/message"
-	"cqhttp-client/src/module/gpt/API"
+	"cqhttp-client/src/module/gpt"
 	"flag"
 	"github.com/gorilla/websocket"
 	"net/url"
@@ -47,10 +47,10 @@ func main() {
 		log.Info("connect to cqhttp succeed")
 
 		client := clt.NewClient(c)
-		api := API.InitApi()
-		client.AddModule(cst.GptText, api.APIByName(API.TextCompletion))
-		client.AddModule(cst.GptImage, api.APIByName(API.ImageGeneration))
-		client.AddModule(cst.GptChat, api.APIByName(API.ChatCompletion))
+		api := gpt.InitApi()
+		client.AddModule(cst.GptText, api.APIByName(gpt.TextCompletion))
+		client.AddModule(cst.GptImage, api.APIByName(gpt.ImageGeneration))
+		client.AddModule(cst.GptChat, api.APIByName(gpt.ChatCompletion))
 		go client.Run()
 		go client.ReplyGroupMessage()
 

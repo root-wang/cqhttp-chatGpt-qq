@@ -9,7 +9,7 @@ import (
 	"cqhttp-client/src/log"
 	"cqhttp-client/src/message"
 	"cqhttp-client/src/module"
-	"cqhttp-client/src/module/gpt/API"
+	"cqhttp-client/src/module/gpt"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"sync"
@@ -38,7 +38,7 @@ type Client struct {
 	receiveMessageChan chan *msg.ReceiveMessage
 	responseChan       chan *Response
 	// 同时为该QQ用户存储先前聊天记录 超时进行清除
-	UserChatHistoryMap map[int64][]*API.ChatMessage
+	UserChatHistoryMap map[int64][]*gpt.ChatMessage
 	// Chat模式计时器
 	UserChatTimerMap map[int64]<-chan time.Time
 	mu               sync.Mutex
@@ -50,15 +50,15 @@ func NewClient(c *websocket.Conn) *Client {
 		c:                  c,
 		receiveMessageChan: make(chan *msg.ReceiveMessage),
 		responseChan:       make(chan *Response),
-		UserChatHistoryMap: make(map[int64][]*API.ChatMessage),
+		UserChatHistoryMap: make(map[int64][]*gpt.ChatMessage),
 		UserChatTimerMap:   make(map[int64]<-chan time.Time),
 		Module:             module.NewModule(),
 	}
 }
 
 // saveUserChatHistory 为用户保存聊天时间内的聊天历史记录
-func (c *Client) saveUserChatHistory(user int64, message string, role cst.Role) []*API.ChatMessage {
-	chatMessage := API.NewChatMessage(message, role)
+func (c *Client) saveUserChatHistory(user int64, message string, role cst.Role) []*gpt.ChatMessage {
+	chatMessage := gpt.NewChatMessage(message, role)
 	defer c.mu.Unlock()
 	c.mu.Lock()
 	c.UserChatHistoryMap[user] = append(c.UserChatHistoryMap[user], chatMessage)

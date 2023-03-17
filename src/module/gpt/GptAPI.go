@@ -1,8 +1,8 @@
-// Package API
+// Package gpt
 // @Description
 // @Author root_wang
 // @Date 2022/12/12 21:36
-package API
+package gpt
 
 import (
 	"cqhttp-client/src/config"
@@ -15,13 +15,6 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-)
-
-const (
-	UserAgent       = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
-	ContentType     = "Content-Type"
-	ApplicationJson = "application/json"
-	Authorization   = "Authorization"
 )
 
 type SaasName string
@@ -121,7 +114,7 @@ func (A *API) MakeRespStruct(api SaasName) interface{} {
 func (A *API) ParseMessage(api SaasName, resp interface{}) (string, error) {
 	parseMsg, err := A.apis[api].Parse(resp)
 	if err != nil {
-		return cst.ErrorParseResponse, fmt.Errorf("failed to parse message from api%s %v", api, err)
+		return cst.ErrorOpenAIParseResponse, fmt.Errorf("failed to parse message from api%s %v", api, err)
 	}
 	return parseMsg, nil
 }
@@ -131,27 +124,27 @@ func (A *API) HandlerMessage(s interface{}, api SaasName) (string, error) {
 	body, _ := json.Marshal(A.MakeRequestStruct(api, s))
 	req, err := http.NewRequest("POST", A.urls[api], strings.NewReader(string(body)))
 	if err != nil {
-		return cst.ErrorResponse, log.ErrorInsidef("failed to create api request: %v", err)
+		return cst.ErrorOpenAIResponse, log.ErrorInsidef("failed to create api request: %v", err)
 	}
 
-	req.Header.Set(ContentType, ApplicationJson)
-	req.Header.Set(Authorization, fmt.Sprintf("Bearer %s", A.ApiKey))
-	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set(cst.ContentType, cst.ContentTypeValue)
+	req.Header.Set(cst.Authorization, fmt.Sprintf("Bearer %s", A.ApiKey))
+	req.Header.Set(cst.UserAgent, cst.UserAgentValue)
 
 	h := &http.Client{}
 	resp, err := h.Do(req)
 	if err != nil {
-		return cst.ErrorResponse, log.ErrorInsidef("failed to connect to api: %v", err)
+		return cst.ErrorOpenAIResponse, log.ErrorInsidef("failed to connect to api: %v", err)
 	}
 
 	if resp.StatusCode != 200 {
-		return cst.ErrorResponse, log.ErrorInsidef("failed to connect to api: %v", resp.Status)
+		return cst.ErrorOpenAIResponse, log.ErrorInsidef("failed to connect to api: %v", resp.Status)
 	}
 
 	respStruct := A.MakeRespStruct(api)
 	err = json.NewDecoder(resp.Body).Decode(respStruct)
 	if err != nil {
-		return cst.ErrorResponse, log.ErrorInsidef("failed to parse message from api:%s :%v", api, err)
+		return cst.ErrorOpenAIResponse, log.ErrorInsidef("failed to parse message from api:%s :%v", api, err)
 	}
 
 	return A.ParseMessage(api, respStruct)

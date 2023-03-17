@@ -3,18 +3,12 @@ module cqhttp-client
 go 1.19
 
 require (
-	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/launchdarkly/eventsource v1.7.1
-	github.com/m1guelpf/chatgpt-telegram v0.2.4
-	github.com/playwright-community/playwright-go v0.2000.1
 	github.com/spf13/viper v1.14.0
 )
 
 require (
-	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -28,7 +22,6 @@ require (
 	golang.org/x/sys v0.0.0-20220908164124-27713097b956 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
