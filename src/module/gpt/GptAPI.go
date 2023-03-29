@@ -25,6 +25,7 @@ func (s SaasName) String() string {
 
 type Parser interface {
 	module.Moduler
+	// Parse todo:解析错误未实现
 	Parse(interface{}) (string, error)
 }
 

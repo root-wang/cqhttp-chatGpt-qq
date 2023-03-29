@@ -105,7 +105,7 @@ func (c *Client) ClearUserChat(receiveMsg *msg.ReceiveMessage) {
 // ReceiveMessage 从qq群中接收@机器人的消息
 func (c *Client) ReceiveMessage(message *msg.ReceiveMessage) error {
 	// 只处理群中有用户@机器人的消息
-	if !message.RawMessage.IsPlainMessage() {
+	if message.RawMessage.IsAtMessage() {
 		cqMsg, err := message.RawMessage.ToCQCode()
 		if err != nil {
 			return log.ErrorInsidef("transform raw message 2 cqcode failed: %v", err)

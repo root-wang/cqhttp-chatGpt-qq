@@ -40,6 +40,12 @@ const (
 	ID CQKEY = "id"
 	// FILE image
 	FILE CQKEY = "file"
+	// TEXT  自定义回复的信息
+	TEXT CQKEY = "text"
+	// TIME 自定义回复时的时间, 格式为Unix时间
+	TIME = "time"
+	// SEQ 起始消息序号, 可通过 get_msg 获得
+	SEQ = "seq"
 )
 
 // CQCode 包含一个CQType和一系列键值对 不能确定有哪些键值对采取懒加载
@@ -154,11 +160,11 @@ func (m RawMessage) String() string {
 	return string(m)
 }
 
-func (m RawMessage) IsPlainMessage() bool {
+func (m RawMessage) IsAtMessage() bool {
 	if strings.HasPrefix(fmt.Sprintf("%s", m), "[CQ:at") {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 func (m RawMessage) IsEmpty() bool {
@@ -167,7 +173,7 @@ func (m RawMessage) IsEmpty() bool {
 
 func (m RawMessage) ToCQCode() (cqMsg *CQMessage, err error) {
 	cqMsg = new(CQMessage)
-	reg := `(\[.*\])\s(.+)`
+	reg := `(\[.*\])\s?(.*)`
 	cqReg := regexp.MustCompile(reg)
 	matches := cqReg.FindStringSubmatch(string(m))
 	if matches == nil {

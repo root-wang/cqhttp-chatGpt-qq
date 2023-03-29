@@ -32,9 +32,9 @@ func (m *Module) AddModule(name string, mer Moduler) {
 
 // CheckModuleType 调用每个模块实现 Moduler.Matcher 接口的方法
 func (m *Module) CheckModuleType(msg string) (module string, prompt string) {
-	for t, moduler := range m.m {
+	for t := range m.m {
 		var ok bool
-		if ok, prompt = moduler.Matcher(msg); ok {
+		if ok, prompt = m.m[t].Matcher(msg); ok {
 			module = t
 			return
 		}
