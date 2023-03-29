@@ -40,22 +40,26 @@ func ErrorInside(e string) error {
 			}
 		}
 		f = short
+	} else {
+		f = "??"
+		line = 0
 	}
 	return fmt.Errorf("%s:%d: %s", f, line, e)
 }
 
 func ErrorInsidef(format string, v ...any) error {
 	_, f, line, ok := runtime.Caller(1)
-	if ok {
-		short := f
-		for i := len(f) - 1; i > 0; i-- {
-			if f[i] == '/' {
-				short = f[i+1:]
-				break
-			}
-		}
-		f = short
+	if !ok {
+		return fmt.Errorf("runtime.Caller() failed")
 	}
+	short := f
+	for i := len(f) - 1; i > 0; i-- {
+		if f[i] == '/' {
+			short = f[i+1:]
+			break
+		}
+	}
+	f = short
 	prefix := []any{f, line}
 	prefix = append(prefix, v...)
 	return fmt.Errorf("%s:%d: "+format, prefix...)

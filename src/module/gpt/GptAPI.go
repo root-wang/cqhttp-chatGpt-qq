@@ -120,7 +120,7 @@ func (A *API) ParseMessage(api SaasName, resp interface{}) (string, error) {
 	return parseMsg, nil
 }
 
-// HandlerMessage 集中处理不同模块的请求 同时在获得请求响应时调用对应的响应解析方法 ParseMessage
+// HandlerMessage handles requests from different modules and calls the corresponding response parsing method ParseMessage when the request response is obtained
 func (A *API) HandlerMessage(s interface{}, api SaasName) (string, error) {
 	body, _ := json.Marshal(A.MakeRequestStruct(api, s))
 	req, err := http.NewRequest("POST", A.urls[api], strings.NewReader(string(body)))

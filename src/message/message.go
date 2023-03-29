@@ -5,7 +5,7 @@
 package msg
 
 import (
-	"cqhttp-client/src/constant"
+	cst "cqhttp-client/src/constant"
 	"cqhttp-client/src/log"
 	"cqhttp-client/src/utils"
 	"fmt"
@@ -79,24 +79,27 @@ func (c *CQCode) String() string {
 	return fmt.Sprintf("%s%s%s", start, str, end)
 }
 
-func (c *CQCode) ParseKey(keys ...CQKEY) {
+func (c *CQCode) ParseKey(keys ...CQKEY) error {
 	for _, key := range keys {
 		if key == CQ {
 			typeReg := regexp.MustCompile(`\[CQ:(\w+),`)
 			matches := typeReg.FindStringSubmatch(c.rawMessage)
-			if matches != nil {
-				c.cqtype = CQTYPE(matches[1])
+			if matches == nil {
+				return log.ErrorInside("can't parse CQ type")
 			}
+			c.cqtype = CQTYPE(matches[1])
 			continue
 		}
-		keyStr := fmt.Sprintf("%s", key)
+		keyStr := string(key)
 		reg := keyStr + `=(.*)[\],]{1}`
 		keyReg := regexp.MustCompile(reg)
 		matches := keyReg.FindStringSubmatch(c.rawMessage)
-		if matches != nil {
-			c.keyValue[key] = matches[1]
+		if matches == nil {
+			return log.ErrorInside("can't parse key " + keyStr)
 		}
+		c.keyValue[key] = matches[1]
 	}
+	return nil
 }
 
 func (c *CQCode) ValueByKey(key CQKEY) string {
@@ -108,7 +111,7 @@ func (c *CQCode) ValueByKey(key CQKEY) string {
 
 func (c *CQCode) SetKeyValue(keys []CQKEY, values ...interface{}) {
 	if len(keys) != len(values) {
-		panic(fmt.Sprintf("must set the same numbers of key and value "))
+		panic("must set the same numbers of key and value ")
 	}
 
 	defer func() {
@@ -161,10 +164,7 @@ func (m RawMessage) String() string {
 }
 
 func (m RawMessage) IsAtMessage() bool {
-	if strings.HasPrefix(fmt.Sprintf("%s", m), "[CQ:at") {
-		return true
-	}
-	return false
+	return strings.HasPrefix(string(m), "[CQ:at")
 }
 
 func (m RawMessage) IsEmpty() bool {
